@@ -1,0 +1,173 @@
+<?php
+include 'config.php';
+session_start();
+
+// Disable all error reporting to hide SQL errors
+error_reporting(0);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+    
+    // Dangerously vulnerable query - concatenated directly
+    $sql = "SELECT * FROM users WHERE username = '$username' AND password = '$password' OR 1=1 -- '";
+    
+    // Force MySQL error reporting off
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
+    
+    // Execute raw query
+    $result = $pdo->query($sql);
+    
+    // Login succeeds if ANY rows exist in users table
+    if ($result && $result->fetch()) {
+        $_SESSION['username'] = $username ?: 'hacked_user';
+        header("Location: welcome.php");
+        exit();
+    } else {
+        $error = "Invalid credentials! SQL: ".htmlspecialchars($sql); // Debug only
+    }
+}
+?>
+!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareerPortal | Login</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --error: #ef4444;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --border-radius: 8px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+         
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                        url('https://images.unsplash.com/photo-1579389083078-4e7018379f7e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') no-repeat center center/cover;
+        }
+        
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            ackground: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .auth-header h2 {
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+        
+        .auth-header p {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .auth-form input {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-form input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .auth-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        .btn:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .auth-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .auth-footer a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .error {
+            color: #ff6b6b;
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 12px;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            text-align: center;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h2>Welcome Back</h2>
+            <p>Sign in to access career opportunities</p>
+        </div>
+        
+        <?php if (isset($error)) echo "<div class='error'>$error</div>"; ?>
+        
+        <form class="auth-form" method="POST">
+            <input type="text" name="username" placeholder="Email or Username" required>
+            <input type="password" name="password" placeholder="Password">
+            <button type="submit" class="btn">Login</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>Don't have an account? <a href="register.php">Register here</a></p>
+        </div>
+    </div>
+</body>
+</html>

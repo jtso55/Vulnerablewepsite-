@@ -1,0 +1,219 @@
+<?php
+session_start();
+if (!isset($_SESSION['username'])) {
+    header("Location: login.php");
+    exit();
+}
+
+include 'config.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
+    $target_dir = "uploads/";
+    if (!file_exists($target_dir)) {
+        mkdir($target_dir, 0777, true);
+    }
+    
+    $target_file = $target_dir . basename($_FILES["file"]["name"]);
+    $uploadOk = 1;
+    
+    // Vulnerable file upload - no proper validation
+    if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+        // Save file info to database
+        $username = $_SESSION['username'];
+        $filename = $_FILES["file"]["name"];
+        $filepath = $target_file;
+        
+        $sql = "INSERT INTO uploads (filename, filepath, uploaded_by) VALUES ('$filename', '$filepath', '$username')";
+        $pdo->exec($sql);
+        
+        $success = "File uploaded successfully!";
+    } else {
+        $error = "Error uploading file.";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Upload</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                        url('https://images.unsplash.com/photo-1507679799987-c73779587ccf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') no-repeat center center/cover;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.9);
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .nav {
+            background: #2c3e50;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .nav a {
+            color: white;
+            margin: 0 15px;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .nav a:hover {
+            background-color: #34495e;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        
+        h3 {
+            color: #2c3e50;
+            margin: 25px 0 15px 0;
+        }
+        
+        form {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        input[type="file"] {
+            display: block;
+            margin-bottom: 15px;
+            padding: 10px;
+            width: 100%;
+            border: 2px dashed #bdc3c7;
+            border-radius: 4px;
+            background: white;
+        }
+        
+        button[type="submit"] {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button[type="submit"]:hover {
+            background-color: #2980b9;
+        }
+        
+        .success {
+            color: #27ae60;
+            background-color: rgba(39, 174, 96, 0.1);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .error {
+            color: #e74c3c;
+            background-color: rgba(231, 76, 60, 0.1);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        li {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .empty-message {
+            color: #7f8c8d;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+            background: #ecf0f1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            <a href="welcome.php">Home</a>
+            <a href="upload.php">Upload File</a>
+            <a href="logout.php">Logout</a>
+        </div>
+        <div class="content">
+            <h1>File Upload</h1>
+            <?php 
+                if (isset($success)) echo "<p class='success'>$success</p>";
+                if (isset($error)) echo "<p class='error'>$error</p>";
+            ?>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="file" name="file" required>
+                <button type="submit">Upload File</button>
+            </form>
+            
+            <h3>Your Uploaded Files:</h3>
+            <?php
+                $username = $_SESSION['username'];
+                $sql = "SELECT * FROM uploads WHERE uploaded_by = '$username'";
+                $result = $pdo->query($sql);
+                
+                if ($result->rowCount() > 0) {
+                    echo "<ul>";
+                    foreach ($result as $row) {
+                        echo "<li><a href='{$row['filepath']}'>{$row['filename']}</a></li>";
+                    }
+                    echo "</ul>";
+                } else {
+                    echo "<p class='empty-message'>No files uploaded yet.</p>";
+                }
+            ?>
+        </div>
+    </div>
+</body>
+</html>
+

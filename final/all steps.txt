@@ -1,0 +1,1197 @@
+first step :download xampp from fierfox (choose xammp for kali)
+
+on terminal:
+1.cd Downloads
+
+2.ls
+  this will appear:
+xampp-linux-x64-8.2.12-0-installer.run
+
+3.chmod 755 xampp-linux-x64-8.2.12-0-installer.run
+
+4.sudo ./xampp-linux-x64-8.2.12-0-installer.run
+
+--now set up the xampp 
+
+after finish start apache +mysql
+
+5.cd /opt/lampp/                                  
+                      
+6.cd  htdocs  
+
+7.sudo mkdir /opt/lampp/htdocs/vulnsite
+sudo chown -R $USER:$USER /opt/lampp/htdocs/vulnsite
+cd /opt/lampp/htdocs/vulnsite
+                             
+ 
+now creat the database :
+on xampp click new >in sql editor paste this code:
+
+--------------------------------------------------
+-- Create the database if it doesn't exist
+CREATE DATABASE IF NOT EXISTS vulnsite_db;
+
+-- Use the database
+USE vulnsite_db;
+
+-- Create users table
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    UNIQUE KEY (username)  -- Ensures usernames are unique
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Create uploads table
+CREATE TABLE IF NOT EXISTS uploads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    filepath VARCHAR(255) NOT NULL,
+    uploaded_by VARCHAR(255) NOT NULL,
+    upload_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (uploaded_by) REFERENCES users(username) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+--------------------------------------------------------------
+
+and in the same method add this query:
+INSERT INTO users (username, password) VALUES ('admin', 'password123'); 
+
+
+and this:
+
+-- For MySQL/MariaDB
+INSERT INTO users (username, password) VALUES 
+('admin', 'password123'),
+('testuser', 'testpass'),
+('alice', 'wonderland');
+-------------------------------------------------
+
+
+
+
+
+now creat the files:
+
+1- sudo nano config.php  :
+
+                       
+     
+
+<?php
+$host = 'localhost';
+$db   = 'vulnsite_db';
+$user = 'root';
+$pass = '';
+$charset = 'utf8mb4';
+
+$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+} catch (\PDOException $e) {
+    throw new \PDOException($e->getMessage(), (int)$e->getCode());
+}
+?>
+
+----------------------------------------------------------------
+index.php
+
+
+  GNU nano 8.2                                                                                                     index.php                                                                                                               
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Portal</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --light: #f8fafc;
+            --dark: #1e293b;
+        }
+         
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+         
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                        url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') no-repeat center center/cover;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+         
+        .welcome-container {
+            text-align: center;
+            max-width: 800px;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+        }
+         
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+         
+         
+-----------------------------------------------------------------
+2-register.php:
+
+<?php
+include 'config.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = str_replace("'", "\\'", $_POST['username']);
+    $password = str_replace("'", "\\'", $_POST['password']);
+    
+    $sql = "INSERT INTO users (username, password) VALUES ('$username', '$password')";
+    
+    try {
+        $pdo->exec($sql);
+        // Clear form and show only welcome message
+        echo '<!DOCTYPE html><html><head><title>Registration Complete</title></head><body>';
+        echo "<div style='font-size:24px;color:green'>Welcome, ".$_POST['username']."!</div>";
+        echo "<script>alert('XSS executed: '+document.cookie);</script>";
+        echo "<p><a href='login.php'>Proceed to Login</a></p>";
+        echo '</body></html>';
+        exit(); // Stop further execution
+    } catch (PDOException $e) {
+        $error = "Error: ".htmlspecialchars_decode($e->getMessage());
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareerPortal | Register</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --accent: #f59e0b;
+            --error: #ef4444;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --border-radius: 8px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                        url('https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') no-repeat center center/cover;
+        }
+        
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .auth-header h2 {
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+        
+        .auth-header p {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .auth-form input {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-form input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .auth-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        .btn:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .auth-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .auth-footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .error {
+            color: #ff6b6b;
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 12px;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            text-align: center;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h2>Join Our Network</h2>
+            <p>Create your account to discover opportunities</p>
+        </div>
+        
+        <?php if (isset($error)) echo "<div class='error'>$error</div>"; ?>
+        
+        <form class="auth-form" method="POST">
+            <input type="text" name="username" placeholder="Email or Username" required>
+            <input type="password" name="password" placeholder="Create Password" required>
+            <input type="password" name="confirm_password" placeholder="Confirm Password" required>
+            <button type="submit" class="btn">Register Now</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>Already have an account? <a href="login.php">Login here</a></p>
+        </div>
+    </div>
+</body>
+</html>
+
+-------------------------------------------------------------
+login.php
+
+<?php
+include 'config.php';
+session_start();
+
+// Disable all error reporting to hide SQL errors
+error_reporting(0);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+    
+    // Dangerously vulnerable query - concatenated directly
+    $sql = "SELECT * FROM users WHERE username = '$username' AND password = '$password' OR 1=1 -- '";
+    
+    // Force MySQL error reporting off
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
+    
+    // Execute raw query
+    $result = $pdo->query($sql);
+    
+    // Login succeeds if ANY rows exist in users table
+    if ($result && $result->fetch()) {
+        $_SESSION['username'] = $username ?: 'hacked_user';
+        header("Location: welcome.php");
+        exit();
+    } else {
+        $error = "Invalid credentials! SQL: ".htmlspecialchars($sql); // Debug only
+    }
+}
+?>
+!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareerPortal | Login</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --error: #ef4444;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --border-radius: 8px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+         
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                        url('https://images.unsplash.com/photo-1579389083078-4e7018379f7e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') no-repeat center center/cover;
+        }
+        
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            ackground: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .auth-header h2 {
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+        
+        .auth-header p {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .auth-form input {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-form input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .auth-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        .btn:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .auth-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .auth-footer a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .error {
+            color: #ff6b6b;
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 12px;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            text-align: center;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h2>Welcome Back</h2>
+            <p>Sign in to access career opportunities</p>
+        </div>
+        
+        <?php if (isset($error)) echo "<div class='error'>$error</div>"; ?>
+        
+        <form class="auth-form" method="POST">
+            <input type="text" name="username" placeholder="Email or Username" required>
+            <input type="password" name="password" placeholder="Password">
+            <button type="submit" class="btn">Login</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>Don't have an account? <a href="register.php">Register here</a></p>
+        </div>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+-------------------------------------------------------------
+welcome.php
+
+<?php
+session_start();
+if (!isset($_SESSION['username'])) {
+    header("Location: login.php");
+    exit();
+}
+
+// XSS vulnerability - user input not sanitized
+$username = $_SESSION['username'];
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareerConnect | Dashboard</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #3b82f6;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --accent: #f59e0b;
+            --success: #10b981;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7ff;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        
+        .navbar {
+            background: var(--primary);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            opacity: 0.8;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        
+        .welcome-section {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .welcome-section h1 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .welcome-section p {
+            color: #64748b;
+        }
+        
+        .announcement-box {
+            background: #f1f5f9;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+        }
+        
+        .job-section h2 {
+            color: var(--dark);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .job-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .job-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .job-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .job-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .job-title {
+            font-size: 1.25rem;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .job-company {
+            color: var(--primary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        .job-salary {
+            color: var(--success);
+            font-weight: 600;
+        }
+        
+        .job-body {
+            padding: 1.5rem;
+        }
+        
+        .job-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .job-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        .job-description {
+            color: #64748b;
+            margin-bottom: 1.5rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .job-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-light);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-outline:hover {
+            background: rgba(37, 99, 235, 0.1);
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .tag-primary {
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary);
+        }
+        
+        .tag-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--accent);
+        }
+        
+        .tag-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <h2 style="color: white;">CareerConnect</h2>
+        </div>
+        <div class="nav-links">
+            <a href="welcome.php">Home</a>
+            <a href="upload.php">Upload Resume</a>
+            <a href="logout.php">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <section class="welcome-section">
+            <h1>Welcome back, <?php echo $username; ?>!</h1>
+            <p>Discover your next career opportunity from our curated job listings.</p>
+            
+            <!-- XSS vulnerable area (maintained) -->
+            <div class="announcement-box">
+                <h3>Latest Announcement:</h3>
+                <p><?php echo isset($_GET['announcement']) ? $_GET['announcement'] : 'No announcements'; ?></p>
+            </div>
+        </section>
+
+        <section class="job-section">
+            <h2>Featured Job Opportunities</h2>
+            <div class="job-grid">
+                <!-- Job Card 1 -->
+                <div class="job-card">
+                    <div class="job-header">
+                        <h3 class="job-title">Senior Frontend Developer</h3>
+                        <span class="job-company">TechSolutions Inc.</span>
+                        <span class="job-salary">$120,000 - $150,000/year</span>
+                    </div>
+                    <div class="job-body">
+                        <div class="job-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> Remote</span>
+                            <span><i class="fas fa-briefcase"></i> Full-time</span>
+                            <span><i class="fas fa-clock"></i> 2 days ago</span>
+                        </div>
+                        <p class="job-description">
+                            We're looking for an experienced Frontend Developer to join our team. 
+                            You'll work with React, TypeScript, and modern CSS to build responsive 
+                            user interfaces for our SaaS platform.
+                        </p>
+                        <div class="job-actions">
+                            <span class="tag tag-primary">React</span>
+                            <button class="btn btn-primary">Apply Now</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Job Card 2 -->
+                <div class="job-card">
+                    <div class="job-header">
+                        <h3 class="job-title">UX/UI Designer</h3>
+                        <span class="job-company">CreativeMinds</span>
+                        <span class="job-salary">$90,000 - $110,000/year</span>
+                    </div>
+                    <div class="job-body">
+                        <div class="job-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> New York, NY</span>
+                            <span><i class="fas fa-briefcase"></i> Full-time</span>
+                            <span><i class="fas fa-clock"></i> 1 week ago</span>
+                        </div>
+                        <p class="job-description">
+                            Join our design team to create beautiful, intuitive interfaces for our 
+                            clients. Proficiency in Figma and user research methodologies required.
+                        </p>
+                        <div class="job-actions">
+                            <span class="tag tag-warning">Figma</span>
+                            <button class="btn btn-primary">Apply Now</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Job Card 3 -->
+                <div class="job-card">
+                    <div class="job-header">
+                        <h3 class="job-title">DevOps Engineer</h3>
+                        <span class="job-company">CloudSystems</span>
+                        <span class="job-salary">$130,000 - $160,000/year</span>
+                    </div>
+                    <div class="job-body">
+                        <div class="job-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> San Francisco, CA</span>
+                            <span><i class="fas fa-briefcase"></i> Full-time</span>
+                            <span><i class="fas fa-clock"></i> 3 days ago</span>
+                        </div>
+                        <p class="job-description">
+                            Seeking a DevOps Engineer to automate our deployment pipelines and 
+                            manage our AWS infrastructure. Kubernetes and Terraform experience required.
+                        </p>
+                        <div class="job-actions">
+                            <span class="tag tag-success">AWS</span>
+                            <button class="btn btn-primary">Apply Now</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Job Card 4 -->
+                <div class="job-card">
+                    <div class="job-header">
+                        <h3 class="job-title">Data Scientist</h3>
+                        <span class="job-company">AnalyticsPro</span>
+                        <span class="job-salary">$110,000 - $140,000/year</span>
+                    </div>
+                    <div class="job-body">
+                        <div class="job-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> Boston, MA</span>
+                            <span><i class="fas fa-briefcase"></i> Full-time</span>
+                            <span><i class="fas fa-clock"></i> 5 days ago</span>
+                        </div>
+                        <p class="job-description">
+                            Looking for a Data Scientist to develop machine learning models and 
+                            analyze large datasets. Python and TensorFlow expertise required.
+                        </p>
+                        <div class="job-actions">
+                            <span class="tag tag-primary">Python</span>
+                            <button class="btn btn-primary">Apply Now</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Font Awesome for icons -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</body>
+</html>
+
+----------------------------------------------------------------
+
+
+  upload.php
+
+ <?php
+session_start();
+if (!isset($_SESSION['username'])) {
+    header("Location: login.php");
+    exit();
+}
+
+include 'config.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
+    $target_dir = "uploads/";
+    if (!file_exists($target_dir)) {
+        mkdir($target_dir, 0777, true);
+    }
+    
+    $target_file = $target_dir . basename($_FILES["file"]["name"]);
+    $uploadOk = 1;
+    
+    // Vulnerable file upload - no proper validation
+    if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+        // Save file info to database
+        $username = $_SESSION['username'];
+        $filename = $_FILES["file"]["name"];
+        $filepath = $target_file;
+        
+        $sql = "INSERT INTO uploads (filename, filepath, uploaded_by) VALUES ('$filename', '$filepath', '$username')";
+        $pdo->exec($sql);
+        
+        $success = "File uploaded successfully!";
+    } else {
+        $error = "Error uploading file.";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Upload</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                        url('https://images.unsplash.com/photo-1507679799987-c73779587ccf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') no-repeat center center/cover;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.9);
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .nav {
+            background: #2c3e50;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .nav a {
+            color: white;
+            margin: 0 15px;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .nav a:hover {
+            background-color: #34495e;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        
+        h3 {
+            color: #2c3e50;
+            margin: 25px 0 15px 0;
+        }
+        
+        form {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        input[type="file"] {
+            display: block;
+            margin-bottom: 15px;
+            padding: 10px;
+            width: 100%;
+            border: 2px dashed #bdc3c7;
+            border-radius: 4px;
+            background: white;
+        }
+        
+        button[type="submit"] {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button[type="submit"]:hover {
+            background-color: #2980b9;
+        }
+        
+        .success {
+            color: #27ae60;
+            background-color: rgba(39, 174, 96, 0.1);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .error {
+            color: #e74c3c;
+            background-color: rgba(231, 76, 60, 0.1);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        li {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .empty-message {
+            color: #7f8c8d;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+            background: #ecf0f1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            <a href="welcome.php">Home</a>
+            <a href="upload.php">Upload File</a>
+            <a href="logout.php">Logout</a>
+        </div>
+        <div class="content">
+            <h1>File Upload</h1>
+            <?php 
+                if (isset($success)) echo "<p class='success'>$success</p>";
+                if (isset($error)) echo "<p class='error'>$error</p>";
+            ?>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="file" name="file" required>
+                <button type="submit">Upload File</button>
+            </form>
+            
+            <h3>Your Uploaded Files:</h3>
+            <?php
+                $username = $_SESSION['username'];
+                $sql = "SELECT * FROM uploads WHERE uploaded_by = '$username'";
+                $result = $pdo->query($sql);
+                
+                if ($result->rowCount() > 0) {
+                    echo "<ul>";
+                    foreach ($result as $row) {
+                        echo "<li><a href='{$row['filepath']}'>{$row['filename']}</a></li>";
+                    }
+                    echo "</ul>";
+                } else {
+                    echo "<p class='empty-message'>No files uploaded yet.</p>";
+                }
+            ?>
+        </div>
+    </div>
+</body>
+</html>
+
+-------------------------------------------------------------- 
+
+logout.php
+
+
+<?php
+session_start();
+session_destroy();
+header("Location: login.php");
+exit();
+?>
+-----------------------------------------
+
+
+
+
+now bash this command to Create the Uploads Directory:
+
+mkdir /opt/lampp/htdocs/vulnsite/uploads
+chmod 777 /opt/lampp/htdocs/vulnsite/uploads
+
+-----------------------------------------------------  
+
+
+
+
+for test:
+
+SQL Injection Test:
+Go to http://localhost/vulnsite/login.php
+
+
+In the username field, enter: 
+
+non_existent' OR 1=1 --
+admin'--+
+admin
+' OR 1=1 --
+admin' --
+nonexistent
+admin' OR '1'='1
+
+----------------------------------------------------------
+
+XSS Test:
+
+
+-In the URL, add: ?announcement=<script>alert('XSS')</script>
+   then do registration (xss executed) will appear (1)
+
+
+-http://localhost/vulnsite/register.php#<script>alert('XSS4')</script>
+   also then do registration (xss executed) will appear (2)
+
+
+-"><script>alert('XSS5')</script><br class="
+    in username field and type any password
+
+
+Will now show a full-page welcome message with the image tag that triggers the alert:
+
+-Username: <img src=x onerror=alert('Stored XSS')>
+ Password: test123
+
+
+
+
+
+
+
+-----------------------------------------------------
+
+file Upload Test:
+Go to the upload page
+
+Upload a PHP file (e.g., shell.php with malicious code)
+
+              
+http://localhost/vulnsite/uploads/shell.php?cmd=id
+Expected Output: Linux user/group info.(1)
+
+List directory contents:
+
+
+shell.php?cmd=ls+-la+/etc
+
+
+
+Read sensitive files:
+
+
+shell.php?cmd=cat+/etc/passwd
+
+
+
+
+
+
+
